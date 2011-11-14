@@ -45,7 +45,6 @@ def sourceToSections(image):
 # Return an image from an ordered list
 def orderedShredstoUnshredded(ordered_shreds, image):
     unshredded = Image.new("RGBA", (IMAGE_WIDTH, IMAGE_HEIGHT))
-    print ordered_shreds
     curr_section = 0
     for i in ordered_shreds:
         crop_x = i*SHRED_WIDTH
@@ -62,13 +61,12 @@ def getOrderedShreds(sections, accuracy_threshold, pixel_diff):
         sections = mergeSections(sections, accuracy_threshold, pixel_diff)
         number_of_runs += 1
     if (number_of_runs>max_number_of_runs):
-        accuracy_threshold += ACCURACY_INCREMENT
         pixel_diff += PIXEL_DIFF_INCREMENT
         sections = getOrderedShreds(sections, accuracy_threshold, pixel_diff)
     return sections
 
 # Returns a list of sections that are merged as much as possible in one pass
-def mergedSections(sections, accuracy_threshold, pixel_diff):
+def mergeSections(sections, accuracy_threshold, pixel_diff):
     merged_list = [sections.pop(0)]
     for section in sections:
         merged_list = addSection(section, merged_list, accuracy_threshold, pixel_diff)
