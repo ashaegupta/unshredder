@@ -1,14 +1,8 @@
 # http://instagram-engineering.tumblr.com/post/12651721845/instagram-engineering-challenge-the-unshredder
-
 from PIL import Image
 
-SAVE_FILE_AS = "unshredded.png"
-PIXEL_DIFF = 25
-PIXEL_DIFF_INCREMENT = 5
-ACCURACY = 0.40
-
 # Objects used for shred sorting. Holds a list of ordered shreds, right_most_pix_col and left_most_pix_col
-class Sections(object):
+class Section(object):
     def __init__(self):
         ordered_shreds = []
         right_most_pixel_col = []
@@ -16,25 +10,39 @@ class Sections(object):
 
 # Unshreds a given file
 class Unshredder(object):
+    SAVE_FILE_AS = "unshredded.png"
+    PIXEL_DIFF = 15
+    PIXEL_DIFF_INCREMENT = 5
+    ACCURACY = 0.30
+    
+    # Initialize unshredder
+    def __init__(self, filename):
+        self.image = Image.open(filename)
+        self.image_width, self.image_height = self.image.size
+        self.accuracy_threshold = self.ACCURACY*self.image_height
+        self.pixel_diff = self.PIXEL_DIFF
+        self.shred_width = self.getShredWidth()
+        self.num_columns = self.image_width/self.shred_width
+        self.unshred()
     
     # Unshred a shredded image file
     def unshred(self):
         sections = self.sourceToSections()
         ordered_section = self.sortSections(sections)
-        ordered_shreds = self.ordered_section.pop().ordered_shreds
+        ordered_shreds = ordered_section.pop().ordered_shreds
         unshredded = self.orderedShredstoUnshreddedImage(ordered_shreds)
-        unshredded.save(SAVE_FILE_AS, 'PNG')
+        unshredded.save(self.SAVE_FILE_AS, 'PNG')
 
     # Creates a list of section objects from the source image
     def sourceToSections(self):
         sections = []
-        for i in range(0, self.num_columns):
+        for i in range(self.num_columns):
            section = Section()
            section.ordered_shreds = [i]
            x = i*self.shred_width
            shred = self.image.crop((x, 0, x+self.shred_width, self.image_height))
-           section.right_most_pixel_col = getPixelCol(self.shred_width-1, shred)
-           section.left_most_pixel_col = getPixelCol(0, shred)
+           section.right_most_pixel_col = self.getPixelCol(self.shred_width-1, shred)
+           section.left_most_pixel_col = self.getPixelCol(0, shred)
            sections.append(section)
         return sections
 
@@ -51,14 +59,15 @@ class Unshredder(object):
 
     # Returns a list of ordered image columns from a list of sections
     def sortSections(self, sections):
-        max_number_of_runs = 10
-        number_of_runs = 0
-        while(len(sections)>1 and not number_of_runs>max_number_of_runs):
+        prev_len = 0
+        curr_len = len(sections)
+        while(curr_len>1 and not prev_len==curr_len):
             sections = self.mergeSections(sections)
-            number_of_runs += 1
-        if (number_of_runs>max_number_of_runs):
-            self.pixel_diff += PIXEL_DIFF_INCREMENT
-            sections = self.getOrderedShreds(sections)
+            prev_len = curr_len
+            curr_len = len(sections)
+        if (curr_len==prev_len):
+            self.pixel_diff += self.PIXEL_DIFF_INCREMENT
+            sections = self.sortSections(sections)
         return sections
 
     # Returns a list of sections that are merged as much as possible in one pass
@@ -104,7 +113,7 @@ class Unshredder(object):
     # Determine if two columns match returns true iff all pixels meet match criteria
     def isColumnMatch(self, col_1, col_2):
         exact_pixel_matches = 0
-        for i in range(0, self.image_height):
+        for i in range(self.image_height):
             exact_pixel_matches += self.isPixelMatch(col_1[i], col_2[i])
         if (exact_pixel_matches >= self.accuracy_threshold):
             return True
@@ -113,44 +122,26 @@ class Unshredder(object):
 
     # Determine if two pixels match
     def isPixelMatch(self, pixel_1, pixel_2):
-        if ((abs(pixel_1[0] - pixel_2[0]) < self.pixel_diff) 
-        and (abs(pixel_1[1] - pixel_2[1]) < self.pixel_diff)
-        and (abs(pixel_1[2] - pixel_2[2]) < self.pixel_diff)):
-            return 1
-        else:
-            return 0
+        for i in range(3):
+            if abs(pixel_1[i] - pixel_2[i]) > self.pixel_diff:
+                return 0
+        return 1
         
     # Get a column of pixel
     def getPixelCol(self, col, shred):
         data = shred.getdata()
         width,height = shred.size
         pixel_col = []
-        for i in range(0, height):
+        for i in range(height):
             pixel = data[i*width+col]
             pixel_col.append(pixel)
         return pixel_col
 
     # BONUS: Get number of columns in an given shredded image assuming no two images are correctly adjacent
-    def getNumberOfColumns(self, pic):
-        width,height = pic.size
-        shred_width = 0
-        i = 0
-        col_1 = self.getPixelCol(i, pic)
-        col_2 = self.getPixelCol(i+1, pic)
-        while(self.isColumnMatch(col_1, col_2) and not i==width-1):
-            col_1 = col_2
-            col_2 = getPixelCol(i+1, pic)
-            shred_width +=1
-            i+=1
-        return width/(shred_width)
-    
-    # Initialize unshredder
-    def __init__(self, filename):
-      image = Image.open(filename)
-      image_width, image_height = image.size
-      print image_width, image_height
-      num_columns = self.getNumberOfColumns(image)
-      shred_width = image_width/num_columns
-      pixel_diff = PIXEL_DIFF
-      accuracy_threshold = ACCURACY*image_height 
-      self.unshred()
+    def getShredWidth(self):
+        for i in range(self.image_width):
+            col_1 = self.getPixelCol(i, self.image)
+            col_2 = self.getPixelCol(i+1, self.image)
+            if not self.isColumnMatch(col_1, col_2):
+                return i+1
+
