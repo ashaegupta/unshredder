@@ -22,7 +22,7 @@ def unshred(file_name):
     unshredded = orderedShredstoUnshredded(ordered_shreds, image)
     unshredded.save('unshredded.png', 'PNG')
 
-# Class to keep track of an ordered list of shreds, right_most_pix_col and left_most_pix_col
+# Objects used to sort shreds. Holds an ordered list of shreds, right_most_pix_col and left_most_pix_col
 class Section(object):
     def __init__(self):
         ordered_shreds = []
