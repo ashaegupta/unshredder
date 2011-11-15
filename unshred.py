@@ -82,10 +82,11 @@ class Unshredder(object):
         has_match = False
         new_merged_list = []
         for section in merged_list:
-            match_type = self.isSectionMatch(section, section_to_add)
-            if(match_type and not has_match): 
-                section = self.merge(section, section_to_add, match_type)    
-                has_match = True
+            if not has_match:
+                match_type = self.isSectionMatch(section, section_to_add)
+                if match_type: 
+                    section = self.merge(section, section_to_add, match_type)    
+                    has_match = True
             new_merged_list += [section]
         if not (has_match):
             new_merged_list += [section_to_add]
